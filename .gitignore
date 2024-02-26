@@ -1,0 +1,3 @@
+### IGNORING JENKINS HOME ###
+jenkins_home/**
+*.frm

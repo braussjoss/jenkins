@@ -1,0 +1,37 @@
+job('maven_dsl'){
+	description('Pull code from local Gitlab, build it with maven and deploys the jar')
+	
+	scm {
+          git {
+            branch('*/main')
+            remote{
+              url('http://git:80/jenkins/maven.git')
+              credentials('newGitToken')
+            }
+            
+          }
+        }
+
+	steps{
+		maven{
+			mavenInstallation('jenkins-maven')
+			goals('-B -DskipTests clean package')
+		}
+		maven{
+			mavenInstallation('jenkins-maven')
+			goals('test')
+		}
+		shell('''
+			echo ******************* DEPLOYING JAR  *******************
+			java -jar /var/jenkins_home/workspace/maven-job/target/my-app-1.0-SNAPSHOT.jar
+		''')
+	}
+
+	publishers {
+        	archiveArtifacts {
+            		pattern('target/*.jar')
+            		archiveJunit('target/surefire-reports/*.xml')
+			mailer('braussjoss@gmail.com', true, true)
+ 	       }
+	}	
+}

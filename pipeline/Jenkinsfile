@@ -1,0 +1,74 @@
+pipeline{
+	agent any
+
+	environment {
+		PASS = credentials('docker_psswd')
+	}
+	
+	stages {
+		
+		stage('Build'){
+			steps {
+				sh '''
+				echo "***** MAVEN CREATING JAR *****"
+				./jenkins/build/mvn.sh  mvn -B -DskipTests clean package
+				echo "***** CREATING IMAGE: Copy JAR and deploy it to an IMAGE *****"
+			  	./jenkins/build/build.sh
+	
+				'''
+			}
+			post {
+      				success {
+            				archiveArtifacts artifacts: 'java-app/target/*.jar', fingerprint: true
+    				}
+			}	
+		}
+
+		stage('Test'){
+                        steps {
+                                sh '''
+				echo "***** MVN TESING***********"
+				./jenkins/test/mvn.sh mvn test
+                                '''
+                        }
+			post {
+                                always {
+                                        junit 'java-app/target/surefire-reports/*.xml'
+
+                                }
+                        }
+
+                }
+
+
+		stage('Push'){
+                        steps {
+                                sh '''
+                                        echo "*****TAG AND PUSH TO DOCKER*********"
+					./jenkins/push/push.sh
+                                '''
+                        }
+                }
+
+
+		stage('Deploy'){
+                        steps {
+                                sh '''
+                                        echo "*****DEPLOY APP WITH MAVEN***********"
+					./jenkins/deploy/deploy.sh
+                                '''
+                        }
+                }
+
+
+	}
+
+	post {
+        	always {
+			sh '''
+				echo "*****CHOWN TARGET******"
+	            		sudo chown 1000 java-app/target/ -R 
+			'''
+        	}
+	}
+}
